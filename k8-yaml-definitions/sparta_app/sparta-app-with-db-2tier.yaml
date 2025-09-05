@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sparta-mongodb
+spec:
+  selector:
+    matchLabels:
+      app: sparta-mongodb
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sparta-mongodb
+    spec:
+      containers:
+      - name: sparta-mongodb
+        image: ameenahriffin/spartadatabase-server:latest
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: mongodb-data
+          mountPath: /data/db
+      volumes:
+      - name: mongodb-data
+        persistentVolumeClaim:
+          claimName: mongodb-pvc
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongodb-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sparta-mongodb
+spec:
+  selector:
+    app: sparta-mongodb
+  ports:
+    - port: 27017
+      targetPort: 27017
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sparta-app
+spec:
+  selector:
+    matchLabels:
+      app: sparta-app
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: sparta-app
+    spec:
+      containers:
+      - name: sparta-app
+        image: ameenahriffin/spartaapp-server
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DB_HOST
+          value: sparta-mongodb:27017
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sparta-app
+spec:
+  selector:
+    app: sparta-app
+  ports:
+    - port: 3000
+      targetPort: 3000
+  type: LoadBalancer
+
+
